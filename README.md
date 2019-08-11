@@ -38,7 +38,7 @@ http://mongocxx.org/mongocxx-v3/installation/
 Compile Publisher:   
 g++ publisher_demo.cpp -o publish -std=c++11 -lamqpcpp -lpthread -ldl -lev -lssl -ljsoncpp   
 Run Publisher:   
-./publish mtl_temperature.json   
+./publish 5 mtl_temperature.json mtl_health.json mtl_grade.json mtl_temperature.json mtl_health.json   
    
    
 Compile Consumer:   
