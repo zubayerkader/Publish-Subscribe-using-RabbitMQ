@@ -8,10 +8,11 @@
 #include <amqpcpp/linux_tcp.h>
 #include <amqpcpp/libev.h>
 #include <thread>
+#include <mutex>
 #include <stdlib.h>
 using namespace std;
 
-
+mutex m_lock;  
 // tcp handler
 class MyHandler : public AMQP::LibEvHandler
 {
@@ -76,15 +77,10 @@ public:
 	virtual ~MyHandler() = default;
 };
 
-int main (int argc, char* argv[])
+void* Publish (void * json_file)
 {
-	if (argc < 2)
-	{
-		cout << "invalid argument\n";
-		return 1;
-	}
-
-	string filename(argv[1]);
+	string filename ="";
+	filename = *((string*)json_file);
 
 	// select routing key depending on filename
 	string routing_key;
@@ -98,8 +94,10 @@ int main (int argc, char* argv[])
 		routing_key = "mtl";
 
 	// access to the event loop
-	auto *loop = EV_DEFAULT;
 
+	m_lock.lock();
+	auto *loop = EV_DEFAULT;
+	
 	// handler implemented for handling tcpconnection
 	MyHandler handler(loop);
 
@@ -112,10 +110,12 @@ int main (int argc, char* argv[])
 	cout << "connection  and channel is open" << endl;
 
 	// declare queue
-	channel.declareQueue("queue").onSuccess([](){
+	channel.declareQueue("queue").onSuccess([&connection](const std::string &name, uint32_t messagecount, uint32_t consumercount){
 
 		// report the name of the temporary queue
 		cout << "declared queue " << endl;
+
+		connection.close();
 
 	});
 
@@ -161,10 +161,62 @@ int main (int argc, char* argv[])
 		{
 			cout << *message << endl;
 		});
+	
+
 	}
 
-	// connection.close();
 
-	// run the loop because connection is still open for background/deffered publishing
+	// wwait for connection to close
 	ev_run(loop, 0);
+	
+	
+	m_lock.unlock();
+	
+
+	pthread_exit(NULL);
+}
+
+
+int main(int argc, char const *argv[])
+{
+	if (argc < 3)
+	{
+		cout << "invalid argument\n";
+		return 1;
+	}
+
+
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
+	int num_thread = atoi(argv[1]);
+	vector<string> filename;
+
+
+	for (int i = 0; i < num_thread; ++i)
+	{
+		filename.push_back(argv[i+2]);
+	}
+	
+	pthread_t publisher[num_thread];
+
+	for (int i = 0; i < num_thread; i++)
+	{
+		
+		int ret = pthread_create(&publisher[i], &attr, Publish, &filename[i]);
+		
+
+		if(ret != 0) 
+    	{
+        	cout << "Error creating thread " << i << endl;
+        	
+    	}
+	}
+
+	for (int i = 0; i < num_thread; i++)
+	{
+		pthread_join(publisher[i], NULL);
+	}
+
+
+	return 0;
 }
