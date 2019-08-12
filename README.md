@@ -43,7 +43,7 @@ Run Publisher:
 example:
 ./publish 5 mtl_temperature.json mtl_health.json mtl_grade.json mtl_temperature.json mtl_health.json  
    
-   Note on publish_demo.cpp: the program will terminate automatically after publishing all data
+   Note on publisher_demo.cpp: the program will terminate automatically after publishing all data
    
    
 Compile Consumer:   
